@@ -1,6 +1,6 @@
-import { PRIORITY_CONFIG } from '../data/syntheticPatients';
 import { Patient } from '../types';
-import { Activity, Users, AlertTriangle, Clock, CheckCircle, Shield } from 'lucide-react';
+import { PRIORITY_CONFIG } from '../data/syntheticPatients';
+import { Activity, Users, AlertTriangle, Clock, CheckCircle, Shield, Database, Cpu } from 'lucide-react';
 
 interface DashboardProps {
   patients: Patient[];
@@ -17,15 +17,38 @@ export default function Dashboard({ patients }: DashboardProps) {
     orange: patients.filter(p => p.priorityLevel === 'orange').length,
     yellow: patients.filter(p => p.priorityLevel === 'yellow').length,
     green: patients.filter(p => p.priorityLevel === 'green').length,
-    blue: patients.filter(p => p.priorityLevel === 'blue').length,
   };
 
   return (
     <div className="space-y-6">
+      {/* Context Banner */}
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-xl p-5 text-white">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-bold mb-1">TriageDesk MCP</h2>
+            <p className="text-sm text-emerald-100 max-w-2xl">
+              Agentic AI decision-support converting patient vitals & chief complaints into standardized, cited SATS urgency levels in seconds.
+              Built on LangGraph + Qwen-2.5 + Model Context Protocol.
+            </p>
+          </div>
+          <div className="hidden md:flex items-center gap-3 bg-white/10 rounded-lg px-4 py-2">
+            <div className="text-center">
+              <p className="text-2xl font-bold">60–90</p>
+              <p className="text-[10px] text-emerald-200">min current wait</p>
+            </div>
+            <div className="w-px h-10 bg-white/20" />
+            <div className="text-center">
+              <p className="text-2xl font-bold">&lt;10</p>
+              <p className="text-[10px] text-emerald-200">sec agent score</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={<Users size={20} />} label="Patients in Queue" value={patients.length} color="emerald" />
-        <StatCard icon={<CheckCircle size={20} />} label="Approved by Nurse" value={approved} color="blue" />
+        <StatCard icon={<CheckCircle size={20} />} label="Nurse-Confirmed" value={approved} color="blue" />
         <StatCard icon={<Clock size={20} />} label="Avg Wait (min)" value={avgWait} color="amber" />
         <StatCard icon={<AlertTriangle size={20} />} label="Deterioration Flags" value={deterioration} color="red" />
       </div>
@@ -34,42 +57,45 @@ export default function Dashboard({ patients }: DashboardProps) {
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
           <Shield size={16} className="text-emerald-600" />
-          Priority Distribution (SATS Scale)
+          SATS Priority Distribution (South African Triage Scale)
         </h3>
         <div className="space-y-3">
-          {(['red', 'orange', 'yellow', 'green', 'blue'] as const).map(level => {
+          {(['red', 'orange', 'yellow', 'green'] as const).map(level => {
             const config = PRIORITY_CONFIG[level];
             const count = priorityCounts[level];
             const pct = patients.length > 0 ? (count / patients.length) * 100 : 0;
             return (
               <div key={level} className="flex items-center gap-3">
-                <span className={`text-xs font-medium w-28 ${config.color}`}>{config.label.split('—')[0].trim()}</span>
+                <div className="w-36">
+                  <span className={`text-xs font-medium ${config.color}`}>{config.label.split('—')[0].trim()}</span>
+                  <span className="text-[10px] text-gray-400 ml-1">{config.scoreRange}</span>
+                </div>
                 <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       level === 'red' ? 'bg-red-500' :
                       level === 'orange' ? 'bg-orange-500' :
                       level === 'yellow' ? 'bg-yellow-500' :
-                      level === 'green' ? 'bg-green-500' :
-                      'bg-blue-500'
+                      'bg-green-500'
                     }`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
                 <span className="text-sm font-mono text-gray-600 w-8 text-right">{count}</span>
+                <span className="text-[10px] text-gray-400 w-20">{config.targetTime}</span>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Recent Activity & Pending Approval */}
+      {/* Two-column: Pending + Agent Config */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Pending Approval */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
             <Activity size={16} className="text-amber-600" />
-            Awaiting Nurse Approval
+            Awaiting Nurse Confirmation (Human Gate)
           </h3>
           {pending > 0 ? (
             <div className="space-y-3">
@@ -81,53 +107,49 @@ export default function Dashboard({ patients }: DashboardProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">
-                      Agent scored — awaiting confirmation
+                      Agent scored — awaiting sign-off
                     </span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">All priorities approved ✓</p>
+            <p className="text-sm text-gray-500">All priorities confirmed by clinician ✓</p>
           )}
         </div>
 
-        {/* Agent Status */}
+        {/* Agent Configuration */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <Shield size={16} className="text-emerald-600" />
-            Agent Configuration
+            <Cpu size={16} className="text-emerald-600" />
+            Agent Stack
           </h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Orchestration</span>
-              <span className="font-mono text-gray-900">LangGraph</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Open-weights model</span>
-              <span className="font-mono text-gray-900">Qwen2.5-72B</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Triage Scale</span>
-              <span className="font-mono text-gray-900">SATS (South African Triage Scale)</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Custom MCP tools</span>
-              <span className="font-mono text-gray-900">3</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Community MCP</span>
-              <span className="font-mono text-gray-900">hospital-records-mcp</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Human-in-loop gate</span>
-              <span className="text-emerald-600 font-medium">Active ✓</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Data residency</span>
-              <span className="font-mono text-gray-900">On-premise / in-country</span>
-            </div>
+          <div className="space-y-2.5 text-sm">
+            <ConfigRow label="Orchestration" value="LangGraph + Pydantic AI" />
+            <ConfigRow label="LLM Serving" value="vLLM / Ollama (local)" />
+            <ConfigRow label="Open-Weights Model" value="Qwen-2.5-72B-Instruct" />
+            <ConfigRow label="MCP SDK" value="FastMCP (Python)" />
+            <ConfigRow label="Triage Scale" value="SATS (South African Triage Scale)" />
+            <ConfigRow label="Custom MCP Tools" value="3 (score, flag, route)" />
+            <ConfigRow label="Borrowed MCP" value="@modelcontextprotocol/server-postgres" />
+            <ConfigRow label="Human-in-Loop Gate" value="Active ✓" highlight />
+            <ConfigRow label="Data Residency" value="On-premise · In-country" />
+            <ConfigRow label="Audit Store" value="PostgreSQL (immutable)" />
           </div>
+        </div>
+      </div>
+
+      {/* Regional Context */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <Database size={16} className="text-blue-600" />
+          Designed for African Public Hospital OPDs
+        </h3>
+        <div className="grid md:grid-cols-2 gap-3">
+          <ContextCard title="SATS Protocol" text="Built on the South African Triage Scale — validated for resource-constrained African emergency & outpatient settings" />
+          <ContextCard title="Staff Ratios" text="Automates composite vital scoring arithmetic, freeing nurses for clinical oversight instead of data entry" />
+          <ContextCard title="Data Sovereignty" text="Open-weights models run locally via vLLM/Ollama — patient health data never leaves the facility or country" />
+          <ContextCard title="Informal Complaints" text="Localized NLU maps non-standardized or translated chief complaints into defensible, cited urgency flags" />
         </div>
       </div>
     </div>
@@ -149,6 +171,24 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
         <span className="text-xs font-medium opacity-80">{label}</span>
       </div>
       <p className="text-2xl font-bold">{value}</p>
+    </div>
+  );
+}
+
+function ConfigRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-gray-500 text-xs">{label}</span>
+      <span className={`font-mono text-xs ${highlight ? 'text-emerald-600 font-semibold' : 'text-gray-900'}`}>{value}</span>
+    </div>
+  );
+}
+
+function ContextCard({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="p-3 bg-gray-50 rounded-lg">
+      <p className="text-xs font-semibold text-gray-800 mb-1">{title}</p>
+      <p className="text-[11px] text-gray-600 leading-relaxed">{text}</p>
     </div>
   );
 }

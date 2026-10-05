@@ -1,14 +1,6 @@
 import { useState } from 'react';
-import { toolCallExamples } from '../data/syntheticPatients';
-import { Terminal, ChevronDown, ChevronRight, Server, Clock, CheckCircle, XCircle, Loader2, Shield } from 'lucide-react';
-
-interface LogEntry {
-  id: string;
-  timestamp: string;
-  patientId: string;
-  patientName: string;
-  steps: LogStep[];
-}
+import { toolCallExamples, mcpResources } from '../data/syntheticPatients';
+import { Terminal, ChevronDown, ChevronRight, Server, Clock, CheckCircle, XCircle, Loader2, Shield, Database } from 'lucide-react';
 
 interface LogStep {
   id: string;
@@ -23,6 +15,14 @@ interface LogStep {
   approvedBy?: string;
 }
 
+interface LogEntry {
+  id: string;
+  timestamp: string;
+  patientId: string;
+  patientName: string;
+  steps: LogStep[];
+}
+
 const demoLogs: LogEntry[] = [
   {
     id: 'log-001',
@@ -30,13 +30,14 @@ const demoLogs: LogEntry[] = [
     patientId: 'P007',
     patientName: 'Halima Yusuf',
     steps: [
-      { id: 's1', description: 'Receive patient vitals and presenting complaint', status: 'success', duration: '12ms' },
-      { id: 's2', description: 'Call get_patient_history to check for known conditions', tool: 'get_patient_history', server: 'hospital-records-mcp (community)', input: '{"patient_id": "P007"}', output: '{"known_conditions": ["Type 2 Diabetes"], "allergies": ["Penicillin"], "last_visit": "2026-08-15"}', status: 'success', duration: '234ms' },
-      { id: 's3', description: 'Apply SATS discriminators to vitals and complaint', tool: 'calculate_urgency_score', server: 'triage-mcp (custom)', input: '{"vitals": {"sbp": 110, "dbp": 70, "hr": 96, "temp": 37.8, "rr": 20, "spo2": 96, "avpu": "A"}, "complaint": "Chest tightness and shortness of breath", "severity": "severe", "symptoms": ["sweating", "radiating pain to left arm"]}', output: '{"score": 2, "level": "orange", "discriminator": "chest_pain_with_radiation", "target_time": "10 minutes"}', status: 'success', duration: '89ms' },
-      { id: 's4', description: 'Cross-reference score against published SATS table', tool: 'validate_against_scale', server: 'sats-reference-mcp (custom)', input: '{"score": 2, "discriminator": "chest_pain_with_radiation"}', output: '{"valid": true, "matches": "SATS Table 3.2 — Chest pain with radiation to arm + diaphoresis = Orange (Very Urgent)"}', status: 'success', duration: '45ms' },
-      { id: 's5', description: 'Determine department routing', tool: 'route_to_department', server: 'triage-mcp (custom)', input: '{"priority": "orange", "complaint": "chest_tightness", "age": 72, "gender": "F"}', output: '{"department": "Emergency", "reason": "Orange priority + chest complaint + age >65 → Emergency department"}', status: 'success', duration: '31ms' },
-      { id: 's6', description: '⏸ HUMAN GATE — Priority requires nurse confirmation before entering queue', status: 'human-gate', humanGate: true, approvedBy: 'Nurse Fatima B.' },
-      { id: 's7', description: 'Priority confirmed. Patient added to Emergency queue at position #2.', status: 'success', duration: '—' },
+      { id: 's1', description: 'LangGraph receives triage intake event — initializes MCPClient session', status: 'success', duration: '12ms' },
+      { id: 's2', description: 'Agent queries available MCP tools dynamically over Stdio transport', status: 'success', duration: '45ms' },
+      { id: 's3', description: 'score_triage_priority — Evaluate vitals against SATS discriminators', tool: 'score_triage_priority', server: 'triage-desk-mcp-server (custom · FastMCP)', input: '{"vitals": {"sbp": 110, "dbp": 70, "hr": 96, "temp": 37.8, "rr": 20, "spo2": 96, "avpu": "A"}, "complaint": "Chest tightness and shortness of breath", "severity": "severe", "symptoms": ["sweating", "radiating pain to left arm"]}', output: '{"level": "orange", "score": 2, "discriminator": "chest_pain_with_radiation", "citation": "SATS Table 2.1", "target_time": "10 minutes"}', status: 'success', duration: '89ms' },
+      { id: 's4', description: 'Access SATS reference resource for inline verification', tool: 'sats://guidelines/vitals_matrix', server: 'MCP Resource (triage-desk-mcp-server)', input: '{"discriminator": "chest_pain_with_radiation", "score": 2}', output: '{"valid": true, "matches": "SATS Table 2.1 — Chest pain with radiation to arm + diaphoresis = Orange (Very Urgent), Score 2"}', status: 'success', duration: '23ms' },
+      { id: 's5', description: 'route_department_referral — Map to specialty queue', tool: 'route_department_referral', server: 'triage-desk-mcp-server (custom · FastMCP)', input: '{"priority": "orange", "complaint": "chest_tightness", "age": 72, "gender": "F"}', output: '{"department": "Emergency", "reason": "Orange priority + chest complaint + age >65 → Emergency department"}', status: 'success', duration: '31ms' },
+      { id: 's6', description: '⏸ HUMAN GATE — Agent pauses. Priority requires explicit nurse sign-off before queue update.', status: 'human-gate', humanGate: true, approvedBy: 'Nurse Fatima B.' },
+      { id: 's7', description: 'execute_query — Write audit record + queue position to PostgreSQL', tool: 'execute_query', server: '@modelcontextprotocol/server-postgres (official)', input: '{"query": "INSERT INTO audit_log (patient_id, tool, input, output, timestamp, clinician_id) VALUES ..."}', output: '{"rows_affected": 1, "audit_id": "AUD-20261015-0042"}', status: 'success', duration: '67ms' },
+      { id: 's8', description: 'Priority confirmed. Patient P007 added to Emergency queue at position #2.', status: 'success', duration: '—' },
     ],
   },
   {
@@ -45,24 +46,24 @@ const demoLogs: LogEntry[] = [
     patientId: 'P002',
     patientName: 'Kwame Asante',
     steps: [
-      { id: 's1', description: 'Receive patient vitals and presenting complaint', status: 'success', duration: '8ms' },
-      { id: 's2', description: 'Call get_patient_history', tool: 'get_patient_history', server: 'hospital-records-mcp (community)', input: '{"patient_id": "P002"}', output: '{"known_conditions": ["Hypertension"], "medications": ["Amlodipine 10mg"], "last_visit": "2026-09-20"}', status: 'success', duration: '198ms' },
-      { id: 's3', description: 'Apply SATS discriminators', tool: 'calculate_urgency_score', server: 'triage-mcp (custom)', input: '{"vitals": {"sbp": 180, "dbp": 110, "hr": 92, "temp": 37.1, "rr": 22, "spo2": 95, "avpu": "A"}, "complaint": "Severe headache with blurred vision", "severity": "severe"}', output: '{"score": 2, "level": "orange", "discriminator": "hypertensive_emergency_with_neuro"}', status: 'success', duration: '76ms' },
-      { id: 's4', description: 'Validate against SATS', tool: 'validate_against_scale', server: 'sats-reference-mcp (custom)', input: '{"score": 2}', output: '{"valid": true}' , status: 'success', duration: '38ms' },
-      { id: 's5', description: 'Route to department', tool: 'route_to_department', server: 'triage-mcp (custom)', input: '{"priority": "orange"}', output: '{"department": "Emergency"}', status: 'success', duration: '22ms' },
-      { id: 's6', description: '⏸ HUMAN GATE — Nurse confirmation required', status: 'human-gate', humanGate: true, approvedBy: 'Nurse Fatima B.' },
-      { id: 's7', description: 'Confirmed. Patient in Emergency queue.', status: 'success', duration: '—' },
+      { id: 's1', description: 'LangGraph receives triage intake event', status: 'success', duration: '8ms' },
+      { id: 's2', description: 'score_triage_priority — Evaluate against SATS', tool: 'score_triage_priority', server: 'triage-desk-mcp-server (custom · FastMCP)', input: '{"vitals": {"sbp": 180, "dbp": 110, "hr": 92, "temp": 37.1, "rr": 22, "spo2": 95, "avpu": "A"}, "complaint": "Severe headache with blurred vision", "severity": "severe"}', output: '{"level": "orange", "score": 2, "discriminator": "hypertensive_emergency_with_neuro", "citation": "SATS Table 2.1"}', status: 'success', duration: '76ms' },
+      { id: 's3', description: 'Verify against SATS reference', tool: 'sats://guidelines/vitals_matrix', server: 'MCP Resource', input: '{"score": 2, "discriminator": "hypertensive_emergency_with_neuro"}', output: '{"valid": true}', status: 'success', duration: '18ms' },
+      { id: 's4', description: 'route_department_referral', tool: 'route_department_referral', server: 'triage-desk-mcp-server (custom · FastMCP)', input: '{"priority": "orange"}', output: '{"department": "Emergency"}', status: 'success', duration: '22ms' },
+      { id: 's5', description: '⏸ HUMAN GATE — Nurse confirmation required', status: 'human-gate', humanGate: true, approvedBy: 'Nurse Fatima B.' },
+      { id: 's6', description: 'execute_query — Persist to PostgreSQL', tool: 'execute_query', server: '@modelcontextprotocol/server-postgres (official)', input: '{"query": "UPDATE queue SET ..."}', output: '{"rows_affected": 1}', status: 'success', duration: '54ms' },
+      { id: 's7', description: 'Confirmed. Patient P002 in Emergency queue.', status: 'success', duration: '—' },
     ],
   },
   {
     id: 'log-003',
     timestamp: '09:22:01',
     patientId: 'P002',
-    patientName: 'Kwame Asante (Re-check)',
+    patientName: 'Kwame Asante (Deterioration Re-check)',
     steps: [
-      { id: 's1', description: 'Deterioration check triggered — 12 min since last vitals', status: 'success', duration: '5ms' },
-      { id: 's2', description: 'Compare current vitals against baseline', tool: 'check_deterioration_markers', server: 'triage-mcp (custom)', input: '{"baseline": {"sbp": 165, "dbp": 100, "avpu": "A"}, "current": {"sbp": 180, "dbp": 110, "avpu": "A"}, "new_symptoms": ["confusion"]}', output: '{"deteriorating": true, "changed": ["sbp +15", "dbp +10", "new confusion"], "suggestion": "escalate_for_review"}', status: 'success', duration: '67ms' },
-      { id: 's3', description: '⏸ HUMAN GATE — Flag raised for nurse re-assessment (no priority change without approval)', status: 'human-gate', humanGate: true, approvedBy: 'Pending' },
+      { id: 's1', description: 'Deterioration check triggered — 12 min since baseline vitals recorded', status: 'success', duration: '5ms' },
+      { id: 's2', description: 'raise_deterioration_flag — Compare re-check vitals against baseline', tool: 'raise_deterioration_flag', server: 'triage-desk-mcp-server (custom · FastMCP)', input: '{"baseline": {"sbp": 165, "dbp": 100, "avpu": "A"}, "current": {"sbp": 180, "dbp": 110, "avpu": "A"}, "new_symptoms": ["confusion"]}', output: '{"deteriorating": true, "changed": ["sbp +15", "dbp +10", "new confusion"], "action": "raise_second_look_alert", "flag_id": "DET-20261015-0003"}', status: 'success', duration: '67ms' },
+      { id: 's3', description: '⏸ HUMAN GATE — Deterioration flag raised for nurse re-assessment. Agent cannot change queue position without approval.', status: 'human-gate', humanGate: true, approvedBy: 'Pending' },
     ],
   },
 ];
@@ -84,27 +85,50 @@ export default function ToolCallLogs() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Agent Tool Call Log</h2>
         <p className="text-sm text-gray-500">
-          Every action the agent takes is logged with inputs, outputs, and timestamps. Irreversible actions require human gate approval.
+          Every MCP request, response payload, timestamp, and approving clinician ID is written to an immutable audit record.
         </p>
       </div>
 
-      {/* MCP Tools Reference */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-          <Server size={14} className="text-emerald-600" />
-          MCP Servers & Tools
-        </h3>
-        <div className="space-y-2">
-          {toolCallExamples.map((tool, i) => (
-            <div key={i} className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50">
+      {/* MCP Tools & Resources Reference */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <Server size={14} className="text-emerald-600" />
+            Custom MCP Tools (triage-desk-mcp-server)
+          </h3>
+          <div className="space-y-2">
+            {toolCallExamples.filter(t => t.server.includes('custom')).map((tool, i) => (
+              <div key={i} className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50">
+                <Terminal size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <code className="text-xs font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{tool.tool}</code>
+                  <p className="text-[11px] text-gray-500 mt-0.5">{tool.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <Database size={14} className="text-blue-600" />
+            Borrowed MCP Server
+          </h3>
+          <div className="space-y-2">
+            <div className="flex items-start gap-3 p-2 rounded-lg">
               <Terminal size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
               <div>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{tool.tool}</code>
-                  <span className="text-[10px] text-gray-400">{tool.server}</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-0.5">{tool.description}</p>
+                <code className="text-xs font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">execute_query</code>
+                <span className="text-[10px] text-gray-400 ml-2">@modelcontextprotocol/server-postgres</span>
+                <p className="text-[11px] text-gray-500 mt-0.5">Queue persistence & immutable audit logging — standardized connection pooling, query sanitization, schema introspection</p>
               </div>
+            </div>
+          </div>
+
+          <h4 className="text-xs font-semibold text-gray-600 mt-4 mb-2">MCP Resources</h4>
+          {mcpResources.map((r, i) => (
+            <div key={i} className="p-2 bg-purple-50 rounded-lg border border-purple-100">
+              <code className="text-[11px] font-mono text-purple-700">{r.uri}</code>
+              <p className="text-[11px] text-gray-600 mt-1">{r.description}</p>
             </div>
           ))}
         </div>
@@ -125,7 +149,7 @@ export default function ToolCallLogs() {
                     <span className="text-sm font-medium text-gray-900">{log.patientName}</span>
                     <span className="text-xs text-gray-400">{log.patientId}</span>
                   </div>
-                  <p className="text-xs text-gray-500">{log.steps.length} steps · {log.steps.filter(s => s.tool).length} tool calls</p>
+                  <p className="text-xs text-gray-500">{log.steps.length} steps · {log.steps.filter(s => s.tool).length} MCP tool calls</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

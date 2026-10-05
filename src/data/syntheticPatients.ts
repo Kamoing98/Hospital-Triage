@@ -1,11 +1,10 @@
 import { Patient, PriorityLevel } from '../types';
 
-export const PRIORITY_CONFIG: Record<PriorityLevel, { label: string; color: string; bgColor: string; borderColor: string; targetTime: string; description: string }> = {
-  red: { label: 'Red — Resuscitation', color: 'text-red-700', bgColor: 'bg-red-50', borderColor: 'border-red-500', targetTime: 'Immediate', description: 'Life-threatening, requires immediate intervention' },
-  orange: { label: 'Orange — Very Urgent', color: 'text-orange-700', bgColor: 'bg-orange-50', borderColor: 'border-orange-500', targetTime: '10 minutes', description: 'Emergency condition, time-critical' },
-  yellow: { label: 'Yellow — Urgent', color: 'text-yellow-700', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-500', targetTime: '60 minutes', description: 'Urgent but stable, should be seen within an hour' },
-  green: { label: 'Green — Less Urgent', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-500', targetTime: '120 minutes', description: 'Non-urgent, routine care needed' },
-  blue: { label: 'Blue — Non-Urgent', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-500', targetTime: '240 minutes', description: 'Minor complaint, can wait for scheduled care' },
+export const PRIORITY_CONFIG: Record<PriorityLevel, { label: string; color: string; bgColor: string; borderColor: string; targetTime: string; description: string; scoreRange: string }> = {
+  red: { label: 'Red — Resuscitation', color: 'text-red-700', bgColor: 'bg-red-50', borderColor: 'border-red-500', targetTime: 'Immediate', description: 'Life-threatening, requires immediate intervention', scoreRange: 'Score 0–1' },
+  orange: { label: 'Orange — Very Urgent', color: 'text-orange-700', bgColor: 'bg-orange-50', borderColor: 'border-orange-500', targetTime: '10 minutes', description: 'Emergency condition, time-critical', scoreRange: 'Score 2' },
+  yellow: { label: 'Yellow — Urgent', color: 'text-yellow-700', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-500', targetTime: '60 minutes', description: 'Urgent but stable, should be seen within an hour', scoreRange: 'Score 3' },
+  green: { label: 'Green — Not Urgent', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-500', targetTime: '120 minutes', description: 'Non-urgent, routine care needed', scoreRange: 'Score 4–5' },
 };
 
 export const syntheticPatients: Patient[] = [
@@ -18,7 +17,8 @@ export const syntheticPatients: Patient[] = [
     vitals: { systolicBP: 85, diastolicBP: 50, pulse: 128, temperature: 38.9, respiratoryRate: 28, oxygenSaturation: 91, consciousnessLevel: 'V' },
     complaint: { primary: 'Severe abdominal pain with vaginal bleeding', duration: '3 hours', severity: 'severe', additionalSymptoms: ['dizziness', 'pale skin', 'weakness'] },
     priorityLevel: 'red',
-    prioritySource: 'SATS Discriminator: Abdominal pain + haemodynamic instability (SBP <90, HR >120) + altered consciousness',
+    priorityScore: 0,
+    prioritySource: 'SATS Discriminator: Abdominal pain + haemodynamic instability (SBP <90, HR >120) + altered consciousness (AVPU=V). Score: 0. Citation: SATS Table 3.2 — Circulatory compromise.',
     approved: true,
     approvedBy: 'Nurse Fatima B.',
     approvedAt: new Date(Date.now() - 42 * 60000),
@@ -36,12 +36,13 @@ export const syntheticPatients: Patient[] = [
     vitals: { systolicBP: 180, diastolicBP: 110, pulse: 92, temperature: 37.1, respiratoryRate: 22, oxygenSaturation: 95, consciousnessLevel: 'A' },
     complaint: { primary: 'Severe headache with blurred vision', duration: '2 hours', severity: 'severe', additionalSymptoms: ['nausea', 'confusion'] },
     priorityLevel: 'orange',
-    prioritySource: 'SATS Discriminator: Hypertensive emergency (SBP >180) + neurological symptoms',
+    priorityScore: 2,
+    prioritySource: 'SATS Discriminator: Hypertensive emergency (SBP >180) + neurological symptoms. Score: 2. Citation: SATS Table 2.1 — Neurological complaint with SBP ≥180.',
     approved: true,
     approvedBy: 'Nurse Fatima B.',
     approvedAt: new Date(Date.now() - 35 * 60000),
     deteriorationFlag: true,
-    deteriorationReason: 'BP rising: was 165/100 at intake, now 180/110. New confusion noted.',
+    deteriorationReason: 'BP rising: was 165/100 at intake, now 180/110. New confusion noted. Agent tool: raise_deterioration_flag triggered.',
     department: 'Emergency',
     waitTimeMinutes: 12,
   },
@@ -54,7 +55,8 @@ export const syntheticPatients: Patient[] = [
     vitals: { systolicBP: 120, diastolicBP: 78, pulse: 88, temperature: 38.4, respiratoryRate: 18, oxygenSaturation: 97, consciousnessLevel: 'A' },
     complaint: { primary: 'High fever and painful urination', duration: '2 days', severity: 'moderate', additionalSymptoms: ['lower back pain', 'chills'] },
     priorityLevel: 'yellow',
-    prioritySource: 'SATS Discriminator: Fever + dysuria = likely UTI/pyelonephritis, stable vitals',
+    priorityScore: 3,
+    prioritySource: 'SATS Discriminator: Fever + dysuria = likely UTI/pyelonephritis, stable vitals. Score: 3. Citation: SATS Table 4.1 — Fever with localised symptoms, no discriminators triggered.',
     approved: true,
     approvedBy: 'Nurse James K.',
     approvedAt: new Date(Date.now() - 27 * 60000),
@@ -71,8 +73,9 @@ export const syntheticPatients: Patient[] = [
     arrivalTime: new Date(Date.now() - 25 * 60000),
     vitals: { systolicBP: 135, diastolicBP: 85, pulse: 76, temperature: 36.8, respiratoryRate: 16, oxygenSaturation: 98, consciousnessLevel: 'A' },
     complaint: { primary: 'Follow-up for hypertension medication review', duration: 'Routine', severity: 'mild', additionalSymptoms: [] },
-    priorityLevel: 'blue',
-    prioritySource: 'SATS Discriminator: Routine follow-up, all vitals within normal range',
+    priorityLevel: 'green',
+    priorityScore: 5,
+    prioritySource: 'SATS Discriminator: Routine follow-up, all vitals within normal range. Score: 5. Citation: SATS Table 5.1 — Non-urgent presentation, no discriminators met.',
     approved: true,
     approvedBy: 'Nurse James K.',
     approvedAt: new Date(Date.now() - 23 * 60000),
@@ -90,7 +93,8 @@ export const syntheticPatients: Patient[] = [
     vitals: { systolicBP: 95, diastolicBP: 60, pulse: 110, temperature: 39.2, respiratoryRate: 26, oxygenSaturation: 94, consciousnessLevel: 'A' },
     complaint: { primary: 'High fever with cough and fast breathing', duration: '4 days', severity: 'severe', additionalSymptoms: ['chest indrawing', 'lethargy'] },
     priorityLevel: 'orange',
-    prioritySource: 'SATS Discriminator: Paediatric — fever + tachypnoea + chest indrawing (WHO pneumonia danger signs)',
+    priorityScore: 2,
+    prioritySource: 'SATS Discriminator: Paediatric — fever + tachypnoea + chest indrawing (WHO pneumonia danger signs). Score: 2. Citation: SATS Paediatric Table 2.3 — Respiratory distress with chest indrawing.',
     approved: true,
     approvedBy: 'Nurse Fatima B.',
     approvedAt: new Date(Date.now() - 17 * 60000),
@@ -108,7 +112,8 @@ export const syntheticPatients: Patient[] = [
     vitals: { systolicBP: 140, diastolicBP: 90, pulse: 82, temperature: 37.0, respiratoryRate: 16, oxygenSaturation: 98, consciousnessLevel: 'A' },
     complaint: { primary: 'Lower back pain after lifting heavy object', duration: '1 day', severity: 'moderate', additionalSymptoms: ['difficulty bending'] },
     priorityLevel: 'green',
-    prioritySource: 'SATS Discriminator: Musculoskeletal pain, stable vitals, no red flags',
+    priorityScore: 4,
+    prioritySource: 'SATS Discriminator: Musculoskeletal pain, stable vitals, no red flags. Score: 4. Citation: SATS Table 4.3 — Musculoskeletal complaint without discriminators.',
     approved: true,
     approvedBy: 'Nurse James K.',
     approvedAt: new Date(Date.now() - 13 * 60000),
@@ -126,6 +131,7 @@ export const syntheticPatients: Patient[] = [
     vitals: { systolicBP: 110, diastolicBP: 70, pulse: 96, temperature: 37.8, respiratoryRate: 20, oxygenSaturation: 96, consciousnessLevel: 'A' },
     complaint: { primary: 'Chest tightness and shortness of breath', duration: '1 hour', severity: 'severe', additionalSymptoms: ['sweating', 'radiating pain to left arm'] },
     priorityLevel: null,
+    priorityScore: null,
     prioritySource: '',
     approved: false,
     approvedBy: null,
@@ -139,28 +145,30 @@ export const syntheticPatients: Patient[] = [
 
 export const toolCallExamples = [
   {
-    tool: 'calculate_urgency_score',
-    server: 'triage-mcp (custom)',
-    description: 'Applies South African Triage Scale (SATS) discriminators to vitals and presenting complaint',
+    tool: 'score_triage_priority',
+    server: 'triage-desk-mcp-server (custom · FastMCP)',
+    description: 'Computes composite SATS scores from vitals and chief complaints, returns priority color + numerical score + clinical citation text',
   },
   {
-    tool: 'check_deterioration_markers',
-    server: 'triage-mcp (custom)',
-    description: 'Compares current vitals against baseline to detect worsening condition',
+    tool: 'raise_deterioration_flag',
+    server: 'triage-desk-mcp-server (custom · FastMCP)',
+    description: 'Compares re-checked vitals against baseline values; triggers second-look alert if parameters cross safety thresholds',
   },
   {
-    tool: 'route_to_department',
-    server: 'triage-mcp (custom)',
-    description: 'Maps priority level and complaint to appropriate department queue',
+    tool: 'route_department_referral',
+    server: 'triage-desk-mcp-server (custom · FastMCP)',
+    description: 'Maps symptom clusters to specialty OPD sub-queues (Paediatrics, Acute Medical, Surgical) to eliminate bounce-backs',
   },
   {
-    tool: 'get_patient_history',
-    server: 'hospital-records-mcp (community)',
-    description: 'Retrieves known allergies, chronic conditions, and previous visits',
+    tool: 'execute_query',
+    server: '@modelcontextprotocol/server-postgres (official)',
+    description: 'Queue persistence and immutable audit logging via PostgreSQL — standardized connection pooling, query sanitization, schema introspection',
   },
+];
+
+export const mcpResources = [
   {
-    tool: 'validate_against_scale',
-    server: 'sats-reference-mcp (custom)',
-    description: 'Cross-references score against published SATS discriminator table',
+    uri: 'sats://guidelines/vitals_matrix',
+    description: 'Static South African Triage Scale reference tables exposed directly to LLM context for inline verification during reasoning loops',
   },
 ];

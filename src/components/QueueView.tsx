@@ -6,7 +6,7 @@ interface QueueViewProps {
   patients: Patient[];
 }
 
-const priorityOrder = { red: 0, orange: 1, yellow: 2, green: 3, blue: 4 };
+const priorityOrder = { red: 0, orange: 1, yellow: 2, green: 3 };
 
 export default function QueueView({ patients }: QueueViewProps) {
   const sorted = [...patients]
@@ -23,11 +23,11 @@ export default function QueueView({ patients }: QueueViewProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Triage Queue</h2>
-          <p className="text-sm text-gray-500">Patients ordered by SATS priority level, then by arrival time</p>
+          <p className="text-sm text-gray-500">Patients ordered by SATS priority score, then by arrival time</p>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          Agent scored · Nurse confirmed
+          Agent scored · Nurse confirmed · Audit logged
         </div>
       </div>
 
@@ -40,7 +40,7 @@ export default function QueueView({ patients }: QueueViewProps) {
               className={`bg-white rounded-xl border-l-4 border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow ${
                 patient.deteriorationFlag ? 'ring-2 ring-red-300 ring-offset-2' : ''
               }`}
-              style={{ borderLeftColor: patient.priorityLevel === 'red' ? '#ef4444' : patient.priorityLevel === 'orange' ? '#f97316' : patient.priorityLevel === 'yellow' ? '#eab308' : patient.priorityLevel === 'green' ? '#22c55e' : '#3b82f6' }}
+              style={{ borderLeftColor: patient.priorityLevel === 'red' ? '#ef4444' : patient.priorityLevel === 'orange' ? '#f97316' : patient.priorityLevel === 'yellow' ? '#eab308' : '#22c55e' }}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
@@ -60,7 +60,7 @@ export default function QueueView({ patients }: QueueViewProps) {
                     <p className="text-xs text-gray-600 mb-2">{patient.complaint.primary}</p>
                     <div className="flex items-center gap-3 text-xs text-gray-500">
                       <span className={`px-2 py-0.5 rounded-full font-medium ${config.bgColor} ${config.color}`}>
-                        {config.label.split('—')[0].trim()}
+                        {config.label.split('—')[0].trim()} (Score: {patient.priorityScore})
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock size={10} /> {patient.waitTimeMinutes} min wait

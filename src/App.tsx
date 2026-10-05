@@ -37,11 +37,15 @@ export default function App() {
               Triage Desk — Agentic AI for Hospital Triage · Built on MCP + Open Source
             </p>
             <div className="flex items-center gap-4 text-xs text-gray-400">
-              <span>SATS (South African Triage Scale)</span>
+              <span>SATS</span>
               <span>·</span>
               <span>LangGraph</span>
               <span>·</span>
-              <span>Qwen2.5-72B</span>
+              <span>Qwen-2.5-72B</span>
+              <span>·</span>
+              <span>FastMCP</span>
+              <span>·</span>
+              <span>vLLM</span>
               <span>·</span>
               <span>Human-in-the-loop</span>
             </div>

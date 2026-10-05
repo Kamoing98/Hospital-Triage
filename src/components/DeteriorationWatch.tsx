@@ -20,7 +20,7 @@ export default function DeteriorationWatch({ patients }: DeteriorationWatchProps
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Deterioration Watch</h2>
         <p className="text-sm text-gray-500">
-          The agent monitors patients in the queue for worsening vitals. A flag triggers a re-check request — not a verdict.
+          The agent monitors patients in the queue via <code className="text-emerald-700 bg-emerald-50 px-1 rounded">raise_deterioration_flag</code> — comparing re-checked vitals against baseline. A flag triggers a second-look request for the nurse, not a verdict.
         </p>
       </div>
 
@@ -87,7 +87,7 @@ export default function DeteriorationWatch({ patients }: DeteriorationWatchProps
               <div className="flex items-center justify-between">
                 <div className="text-[11px] text-gray-400">
                   <Eye size={10} className="inline mr-1" />
-                  Agent tool: check_deterioration_markers · Triggered at {formatTimeAgo(new Date(Date.now() - 2 * 60000))}
+                  Agent tool: raise_deterioration_flag · Triggered at {formatTimeAgo(new Date(Date.now() - 2 * 60000))}
                 </div>
                 {isAcked ? (
                   <span className="flex items-center gap-1 text-xs text-emerald-600">
@@ -117,7 +117,7 @@ export default function DeteriorationWatch({ patients }: DeteriorationWatchProps
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span className="text-sm text-gray-700">{patient.name}</span>
               </div>
-              <span className="text-xs text-emerald-600">Stable — no change detected</span>
+              <span className="text-xs text-emerald-600">Stable — raise_deterioration_flag: no threshold crossed</span>
             </div>
           ))}
         </div>

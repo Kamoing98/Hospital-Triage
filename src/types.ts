@@ -24,6 +24,7 @@ export interface Patient {
   vitals: PatientVitals;
   complaint: PresentingComplaint;
   priorityLevel: PriorityLevel | null;
+  priorityScore: number | null;
   prioritySource: string;
   approved: boolean;
   approvedBy: string | null;
@@ -34,7 +35,7 @@ export interface Patient {
   waitTimeMinutes: number;
 }
 
-export type PriorityLevel = 'red' | 'orange' | 'yellow' | 'green' | 'blue';
+export type PriorityLevel = 'red' | 'orange' | 'yellow' | 'green';
 
 export interface PriorityScore {
   level: PriorityLevel;
